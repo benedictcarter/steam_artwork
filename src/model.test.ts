@@ -1,0 +1,11 @@
+import { describe, expect, it } from 'vitest';
+import { type Asset, newProject, imageLayer, fitImage, moveLayer, textLayer, updateBoard, validateProject } from './model';
+
+const asset:Asset={id:'image-1',name:'Wide screenshot.png',kind:'image',mime:'image/png',width:1920,height:1080,data:'data:image/png;base64,AAAA'};
+describe('document and layout invariants',()=>{
+  it('starts with current Steam targets and an independently transparent logo',()=>{const p=newProject();expect(p.boards.map(b=>[b.id,b.width,b.height])).toContainEqual(['library-hero',3840,1240]);expect(p.boards.find(b=>b.id==='small')).toMatchObject({width:462,height:174});expect(p.boards.find(b=>b.id==='library-logo')?.background).toBeNull();expect(p.boards.every(b=>b.layers.length===0)).toBe(true);});
+  it('fits and fills a portrait target without distorting the source',()=>{const b=newProject().boards.find(b=>b.id==='vertical')!;const l=imageLayer(asset,b);const fit=fitImage(l,asset,b,'fit'),fill=fitImage(l,asset,b,'fill');expect(fit.width/fit.height).toBeCloseTo(1920/1080);expect(fit.width).toBeCloseTo(b.width);expect(fill.height).toBeCloseTo(b.height);expect(fill.x).toBeLessThan(0);expect(fit.y).toBeGreaterThan(0);});
+  it('reorders only the selected artboard without mutating history',()=>{let p=newProject();const b=p.boards[0],one=textLayer(b),two=textLayer(b);p=updateBoard(p,b.id,b=>({...b,layers:[one,two]}));const next=moveLayer(p,b.id,one.id,1);expect(next.boards[0].layers.map(l=>l.id)).toEqual([two.id,one.id]);expect(p.boards[0].layers.map(l=>l.id)).toEqual([one.id,two.id]);expect(next.boards[1]).toBe(p.boards[1]);});
+  it('rejects corrupt projects before replacing the open document',()=>{const p=newProject();expect(()=>validateProject({...p,version:2})).toThrow();expect(()=>validateProject({...p,boards:[{...p.boards[0],width:Infinity}]})).toThrow();const bad=imageLayer(asset,p.boards[0]);expect(()=>validateProject({...p,boards:[{...p.boards[0],layers:[bad]}]})).toThrow();});
+  it('accepts a portable document with independently placed shared images',()=>{const p=newProject();p.assets=[asset];p.boards[0].layers=[imageLayer(asset,p.boards[0])];p.boards[3].layers=[imageLayer(asset,p.boards[3])];expect(validateProject(JSON.parse(JSON.stringify(p)))).toEqual(p);expect(p.boards[0].layers[0].width).not.toBe(p.boards[3].layers[0].width);});
+});
