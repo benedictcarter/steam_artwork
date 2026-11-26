@@ -15,7 +15,7 @@ Open the Local URL printed by Vite. `npm run build` produces `dist/`; `npm test`
 
 1. Import PNG, JPG or WebP images. Import TTF/OTF/WOFF/WOFF2 fonts individually or in ZIP packs.
 2. Drag an asset onto a target (clicking an image does not add it). Targets start transparent. Add editable text from the toolbar.
-   To remove an image's background, click the eraser under it, click the background areas to clear, adjust Tolerance, then Save as new asset. The original stays in the library.
+   To remove an image's background, click the eraser under it, click the background areas to clear, adjust Tolerance, tick Auto-crop to trim empty transparent edges, then Save as new asset. The original stays in the library.
 3. Move/resize/rotate on canvas or use the inspector. Reorder layers by dragging the layer list or using its arrows. Visibility and locking are per placement.
 4. Use Fit/Fill for artboard coverage. Crop fields trim an image placement using original source pixels; Reset restores it without altering the source.
 5. Save a `.steamart` project. It is a ZIP containing a versioned manifest and original images/fonts. Open restores the editable document. Browser autosave is recovery convenience, not the portable project file.
