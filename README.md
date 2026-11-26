@@ -21,13 +21,13 @@ Open the Local URL printed by Vite. `npm run build` produces `dist/`; `npm test`
 5. Save a `.steamart` project. It is a ZIP containing a versioned manifest and original images/fonts. Open restores the editable document. Browser autosave is recovery convenience, not the portable project file.
 6. Export a single PNG or a ZIP of selected targets. Export dimensions are independent of viewport zoom and display pixel density. Transparent backgrounds are retained.
 
-Shortcuts: Ctrl/Cmd+Z undo; Ctrl/Cmd+Shift+Z redo; Ctrl/Cmd+D duplicate; Ctrl/Cmd+C/X/V copy/cut/paste a layer; Ctrl/Cmd+S save; Delete remove; arrow keys nudge (Shift = 10px). Pasted clipboard images are imported. Middle-drag pans the workspace.
+Shortcuts: Ctrl/Cmd+Z undo; Ctrl/Cmd+Shift+Z redo; Ctrl/Cmd+D duplicate; Ctrl/Cmd+C/X/V copy/cut/paste the selected layers (pasting into another target scales the group to fit and centres it); Ctrl/Cmd+S save; Delete remove; arrow keys nudge (Shift = 10px). Pasted clipboard images are imported. Middle-drag pans the workspace. Drag a box or Shift-click to select several layers; drag any of them to move the group. The 3D tilt section leans a layer back or turns it like a door, with true perspective, and Camera distance sets how strong the effect is.
 
 Store and library presets follow [Valve's store documentation](https://partner.steamgames.com/doc/store/assets/standard), [library documentation](https://partner.steamgames.com/doc/store/assets/libraryassets), and [artwork rules](https://partner.steamgames.com/doc/store/assets/rules), checked 2026-11-13. The library-logo aspect ratio can be adjusted while keeping a 1280px width or 720px height. Optional page background is available under Manage targets.
 
 ## Scope and limits
 
-- This release is the collage/layout layer plus click-to-clear background removal (connected similar colour, hard edges). AI/soft-edge cut-outs, lasso/mask painting, grouped multi-selection and external-editor integration are not included.
+- This release is the collage/layout layer plus click-to-clear background removal (connected similar colour, hard edges). AI/soft-edge cut-outs, lasso/mask painting and external-editor integration are not included.
 - Image source limit: 50 MB/file and 60 megapixels. Expanded font packs: 50 MB. Project imports: 300 MB compressed / 250 MB asset bytes expanded. These are practical initial limits, not Steam limits.
 - Steam screenshots, icons, event artwork and bundle-specific presets are outside this release. Store/library text and transparency guidelines remain a human review step.
 - Browser storage is specific to this origin/browser and can be cleared. Download `.steamart` files to keep independent copies or move between the local and hosted app.
