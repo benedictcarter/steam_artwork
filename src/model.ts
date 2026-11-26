@@ -3,7 +3,7 @@ export type Layer = { id: string; name: string; type: 'image' | 'text'; assetId?
 export type Board = { id: string; name: string; group: 'Store' | 'Library' | 'Extras'; width: number; height: number; background: string | null; layers: Layer[]; enabled: boolean; note?: string };
 export type Project = { format: 'steam-art-studio'; version: 1; name: string; assets: Asset[]; boards: Board[] };
 export const uid = () => crypto.randomUUID();
-const preset = (id: string, name: string, group: Board['group'], width: number, height: number, note?: string): Board => ({id,name,group,width,height,background:id==='library-logo'?null:'#172331',layers:[],enabled:true,note});
+const preset = (id: string, name: string, group: Board['group'], width: number, height: number, note?: string): Board => ({id,name,group,width,height,background:null,layers:[],enabled:true,note});
 export function newProject(): Project {return {format:'steam-art-studio',version:1,name:'Untitled project',assets:[],boards:[
   preset('header','Header capsule','Store',920,430),
   preset('small','Small capsule','Store',462,174,'Check your title at 120 × 45 and 184 × 69.'),

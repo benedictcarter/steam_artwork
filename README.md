@@ -14,7 +14,8 @@ Open the Local URL printed by Vite. `npm run build` produces `dist/`; `npm test`
 ## Workflow
 
 1. Import PNG, JPG or WebP images. Import TTF/OTF/WOFF/WOFF2 fonts individually or in ZIP packs.
-2. Drag an asset onto a target, or select a target and click an asset. Add editable text from the toolbar.
+2. Drag an asset onto a target (clicking an image does not add it). Targets start transparent. Add editable text from the toolbar.
+   To remove an image's background, click the eraser under it, click the background areas to clear, adjust Tolerance, tick Auto-crop to trim empty transparent edges, then Save as new asset. The original stays in the library.
 3. Move/resize/rotate on canvas or use the inspector. Reorder layers by dragging the layer list or using its arrows. Visibility and locking are per placement.
 4. Use Fit/Fill for artboard coverage. Crop fields trim an image placement using original source pixels; Reset restores it without altering the source.
 5. Save a `.steamart` project. It is a ZIP containing a versioned manifest and original images/fonts. Open restores the editable document. Browser autosave is recovery convenience, not the portable project file.
@@ -26,13 +27,14 @@ Store and library presets follow [Valve's store documentation](https://partner.s
 
 ## Scope and limits
 
-- This release is the collage/layout layer. Background removal, lasso/mask painting, grouped multi-selection and external-editor integration are not included.
+- This release is the collage/layout layer plus click-to-clear background removal (connected similar colour, hard edges). AI/soft-edge cut-outs, lasso/mask painting, grouped multi-selection and external-editor integration are not included.
 - Image source limit: 50 MB/file and 60 megapixels. Expanded font packs: 50 MB. Project imports: 300 MB compressed / 250 MB asset bytes expanded. These are practical initial limits, not Steam limits.
 - Steam screenshots, icons, event artwork and bundle-specific presets are outside this release. Store/library text and transparency guidelines remain a human review step.
 - Browser storage is specific to this origin/browser and can be cleared. Download `.steamart` files to keep independent copies or move between the local and hosted app.
 
 ## Source organization
 
+- `retouch.ts` / `RetouchDialog.tsx`: background removal, saved as a new asset.
 - `model.ts`: versioned document, target presets and immutable edits.
 - `files.ts`: local imports, font loading, ZIP project files and serialized IndexedDB autosave.
 - `render.ts`: shared Fabric object creation and full-resolution export.
