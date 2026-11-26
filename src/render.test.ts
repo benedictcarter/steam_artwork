@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { setEnv } from 'fabric';
 import { getEnv } from 'fabric/node';
-import { renderPNG, exportBoards } from './render';
+import { renderPNG, exportBoards, makeObject, objectPatch } from './render';
 import { makeProjectFile, openProjectFile, unpack } from './files';
 import { newProject, imageLayer, type Asset } from './model';
 
@@ -28,4 +28,6 @@ describe('real export and portable project round trip',()=>{
   it('packs shared images repeatedly at each target’s independent dimensions',async()=>{const p=newProject(),asset=fixture();const boards=p.boards.filter(b=>['header','small','library-logo'].includes(b.id)).map(b=>({...b,layers:[imageLayer(asset,b)]}));const progress:number[]=[];const result=await exportBoards(boards,[asset],n=>progress.push(n));const archive=await unpack(new Uint8Array(await result.arrayBuffer()));expect(progress).toEqual([1,2,3]);for(const b of boards){const filename=b.name.toLowerCase().replaceAll(' ','-')+'.png';const bytes=archive[filename];const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);expect([view.getUint32(16),view.getUint32(20)]).toEqual([b.width,b.height]);}});
   it('reopens the saved ZIP with original asset bytes and editable layers',async()=>{const p=newProject();p.name='Round trip';p.assets=[fixture()];p.boards[0].layers=[imageLayer(p.assets[0],p.boards[0])];const blob=await makeProjectFile(p);const file=new File([await blob.arrayBuffer()],'roundtrip.steamart');const restored=await openProjectFile(file);expect(restored).toEqual(p);});
   it('a tilted-back image draws its far top edge narrower than its near bottom edge',async()=>{const p=newProject(),asset=fixture();const b={...p.boards[0],width:200,height:120,background:null};b.layers=[{...imageLayer(asset,b),x:40,y:20,width:120,height:80,angle:0,tiltX:50}];const r=await pixels(await renderPNG(b,[asset]));const span=(y:number)=>{let n=0;for(let x=0;x<200;x++)if(r.pixel(x,y)[3]>128)n++;return n;};let top=-1,bottom=-1;for(let y=0;y<120;y++)if(span(y)){if(top<0)top=y;bottom=y;}expect(top).toBeGreaterThan(20);expect(span(top+2)).toBeLessThan(span(bottom-2)-10);});
+  it('a tilted, rotated layer survives the editor round trip unchanged',async()=>{const p=newProject(),asset=fixture();const l={...imageLayer(asset,p.boards[0]),x:30,y:40,width:120,height:60,angle:25,tiltX:40,tiltY:-30,cameraDistance:.7};const back=objectPatch(await makeObject(l,[asset]));for(const k of ['x','y','width','height','angle'] as const)expect(back[k]).toBeCloseTo(l[k],6);});
+  it('a tilted layer draws nothing outside its selection box',async()=>{const p=newProject(),asset=fixture();const b={...p.boards[0],width:200,height:160,background:null};const l={...imageLayer(asset,b),x:50,y:40,width:100,height:70,angle:0,tiltX:-55,tiltY:40,cameraDistance:.5};b.layers=[l];const o=await makeObject(l,[asset]),r=await pixels(await renderPNG(b,[asset]));let inside=0;for(let y=0;y<160;y++)for(let x=0;x<200;x++)if(r.pixel(x,y)[3]>64){const out=x<o.left-1||x>o.left+o.width+1||y<o.top-1||y>o.top+o.height+1;expect(out).toBe(false);inside++;}expect(inside).toBeGreaterThan(500);});
 });

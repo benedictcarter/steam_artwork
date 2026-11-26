@@ -9,6 +9,7 @@ export const CAMERA_DISTANCE_MAX=10;
 export const DEFAULT_CAMERA_DISTANCE=1;
 const NEAREST_CAMERA_GAP=1.05;
 const MESH_CELLS=16;
+const FIT_STEPS=8;
 const RADIANS=Math.PI/180;
 
 export const isTilted=(t:Partial<Tilt>)=>!!(t.tiltX||t.tiltY);
@@ -21,6 +22,19 @@ export function projector(width:number,height:number,tilt:Partial<Tilt>):(p:Vec)
   const camera=Math.max((tilt.cameraDistance??DEFAULT_CAMERA_DISTANCE)*Math.hypot(width,height)/2,nearest*NEAREST_CAMERA_GAP);
   return p=>{const q=place(p),s=camera/(camera+q.z);return {x:q.x*s,y:q.y*s};};
 }
+
+export type Box={x:number;y:number;width:number;height:number};
+export function tiltedBox(width:number,height:number,tilt:Partial<Tilt>):Box{
+  const f=projector(width,height,tilt),ps=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([u,v])=>f({x:u*width/2,y:v*height/2})),xs=ps.map(p=>p.x),ys=ps.map(p=>p.y);
+  const left=Math.min(...xs),top=Math.min(...ys);
+  return {x:width/2+left,y:height/2+top,width:Math.max(...xs)-left,height:Math.max(...ys)-top};
+}
+export function flatSize(box:{width:number;height:number},tilt:Partial<Tilt>,guess:{width:number;height:number}){
+  let s=guess;
+  for(let i=0;i<FIT_STEPS;i++){const b=tiltedBox(s.width,s.height,tilt);s={width:s.width*box.width/b.width,height:s.height*box.height/b.height};}
+  return s;
+}
+export const rotate=({x,y}:Vec,degrees:number):Vec=>{const a=degrees*RADIANS;return {x:x*Math.cos(a)-y*Math.sin(a),y:x*Math.sin(a)+y*Math.cos(a)};};
 
 export function mesh(project:(p:Vec)=>Vec,area:{width:number;height:number},pixels:{width:number;height:number},cells=MESH_CELLS):Triangle[]{
   const triangles:Triangle[]=[];
