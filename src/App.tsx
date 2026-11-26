@@ -4,8 +4,8 @@ import { RetouchDialog } from './RetouchDialog';
 import { Artboard } from './Artboard';
 import { useProject } from './useProject';
 import { type Asset, type Board, type Layer, type Project, uid, cropImage, duplicateLayer, fitImage, fitLayers, imageLayer, moveLayer, newProject, safeName, textLayer, updateBoard, updateLayers } from './model';
-import { download, importAssets, makeProjectFile, openProjectFile } from './files';
-import { exportBoards, renderPNG } from './render';
+import { download, importAssets, pack, makeProjectFile, openProjectFile } from './files';
+import { exportFiles } from './render';
 import { CAMERA_DISTANCE_MAX, CAMERA_DISTANCE_MIN, DEFAULT_CAMERA_DISTANCE, TILT_LIMIT } from './perspective';
 
 type Modal='export'|'targets'|'new'|'retouch'|null;
@@ -56,7 +56,7 @@ export default function App(){
     window.addEventListener('keydown',key);window.addEventListener('copy',copy);window.addEventListener('cut',copy);window.addEventListener('paste',paste);return()=>{window.removeEventListener('keydown',key);window.removeEventListener('copy',copy);window.removeEventListener('cut',copy);window.removeEventListener('paste',paste);};
   },[doImport,duplicate,patchLayers,pasteLayers,redo,removeSelected,saveProject,toast,undo]);
   useEffect(()=>{const block=(e:BeforeUnloadEvent)=>{if(saveStatus==='Saving on this device…'){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',block);return()=>window.removeEventListener('beforeunload',block);},[saveStatus]);
-  const doExport=async()=>{setBusy('Rendering artwork…');try{const boards=project.boards.filter(b=>exportIds.includes(b.id));if(!boards.length)return;if(boards.length===1)download(await renderPNG(boards[0],project.assets),`${safeName(boards[0].name).toLowerCase()}.png`);else download(await exportBoards(boards,project.assets,n=>setBusy(`Exporting ${n} of ${boards.length}…`)),`${safeName(project.name)}-steam-art.zip`);setModal(null);toast(`Exported ${boards.length} ${boards.length===1?'PNG':'PNGs'} at full resolution.`);}catch(e){setError(e instanceof Error?e.message:'Export failed.');}finally{setBusy('');}};
+  const doExport=async()=>{setBusy('Rendering artwork…');try{const boards=project.boards.filter(b=>exportIds.includes(b.id));if(!boards.length)return;const files=await exportFiles(boards,project.assets,n=>setBusy(`Rendering ${n} of ${boards.length}…`)),names=Object.keys(files);if(names.length===1)download(new Blob([files[names[0]].slice().buffer as ArrayBuffer],{type:names[0].endsWith('.ico')?'image/x-icon':'image/png'}),names[0]);else download(new Blob([(await pack(files)).slice().buffer as ArrayBuffer],{type:'application/zip'}),`${safeName(project.name)}-steam-art.zip`);setModal(null);toast(`Exported ${names.length} ${names.length===1?'file':'files'} at full resolution.`);}catch(e){setError(e instanceof Error?e.message:'Export failed.');}finally{setBusy('');}};
   const closeRetouch=useCallback(()=>setRetouchId(null),[]);
   const focusBoard=useCallback((id:string)=>{setActiveId(id);setFocus(true);setZoom(100);},[]);
   const visibleBoards=project.boards.filter(b=>b.enabled&&(collection==='All artwork'||b.group===collection));

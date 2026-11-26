@@ -1,9 +1,14 @@
 import { CAMERA_DISTANCE_MAX, CAMERA_DISTANCE_MIN, rotate, TILT_LIMIT, tiltedBox } from './perspective';
 export type Asset = { id: string; name: string; kind: 'image' | 'font'; mime: string; data: string; width?: number; height?: number; family?: string };
 export type Layer = { id: string; name: string; type: 'image' | 'text'; assetId?: string; x: number; y: number; width: number; height: number; angle: number; opacity: number; visible: boolean; locked: boolean; flipX: boolean; flipY: boolean; cropX?: number; cropY?: number; cropWidth?: number; cropHeight?: number; text?: string; fontFamily?: string; fontSize?: number; fill?: string; align?: 'left' | 'center' | 'right'; stroke?: string; strokeWidth?: number; tiltX?: number; tiltY?: number; cameraDistance?: number };
-export type Board = { id: string; name: string; group: 'Store' | 'Library' | 'Extras'; width: number; height: number; background: string | null; layers: Layer[]; enabled: boolean; note?: string };
+export type Board = { id: string; name: string; group: 'Store' | 'Library' | 'Extras'; width: number; height: number; background: string | null; layers: Layer[]; enabled: boolean; note?: string; outputs?: Output[] };
+export type Output = { format: 'png' | 'ico'; widths: number[] };
 export type Project = { format: 'steam-art-studio'; version: 1; name: string; assets: Asset[]; boards: Board[] };
 export const uid = () => crypto.randomUUID();
+export const ICO_SIZES = [16,24,32,48,64,128,256];
+const ICO_MAX = 256;
+const OUTPUT_WIDTHS_MAX = 10;
+export const boardOutputs = (b: Board): Output[] => b.outputs ?? [{format:'png',widths:[b.width]}];
 const preset = (id: string, name: string, group: Board['group'], width: number, height: number, note?: string): Board => ({id,name,group,width,height,background:null,layers:[],enabled:true,note});
 export function newProject(): Project {return {format:'steam-art-studio',version:1,name:'Untitled project',assets:[],boards:[
   preset('header','Header capsule','Store',920,430),
@@ -15,6 +20,7 @@ export function newProject(): Project {return {format:'steam-art-studio',version
   preset('library-hero','Library hero','Library',3840,1240,'Artwork only. Export your logo separately.'),
   preset('library-logo','Library logo','Library',1280,720,'Transparent PNG. Adjust the aspect ratio: width 1280 or height 720.'),
   {...preset('page-background','Page background','Extras',1438,810),enabled:false},
+  {...preset('app-icon','App icon','Extras',512,512,'Exports 512 × 512 and 184 × 184 PNGs and a Windows .ico.'),outputs:[{format:'png',widths:[512,184]},{format:'ico',widths:ICO_SIZES}]},
 ]};}
 export const layerBase = (): Omit<Layer,'name'|'type'> => ({id:uid(),x:0,y:0,width:100,height:100,angle:0,opacity:1,visible:true,locked:false,flipX:false,flipY:false});
 export function imageLayer(asset: Asset, board: Board, at?: {x:number;y:number}): Layer {
@@ -52,6 +58,8 @@ export function fitLayers(layers:Layer[],board:Pick<Board,'width'|'height'>):Lay
 }
 export function safeName(name:string):string{return name.trim().replace(/[<>:"/\\|?*\x00-\x1f]/g,'-').replace(/\s+/g,'-').slice(0,90)||'artwork';}
 
+export function addMissingTargets(project:Project):Project{const have=new Set(project.boards.map(b=>b.id));return {...project,boards:[...project.boards,...newProject().boards.filter(b=>!have.has(b.id))]};}
+
 export function validateProject(value:unknown):Project {
   const p=value as Project;
   const fail=()=>{throw new Error('This is not a valid Steam Art Studio project.');};
@@ -59,6 +67,6 @@ export function validateProject(value:unknown):Project {
   const ids=new Set<string>();
   for(const a of p.assets){if(!a||typeof a.id!=='string'||ids.has(a.id)||typeof a.name!=='string'||!['image','font'].includes(a.kind)||typeof a.data!=='string'||!a.data.startsWith('data:'))fail();ids.add(a.id);if(a.kind==='image'&&(!Number.isFinite(a.width)||!Number.isFinite(a.height)||(a.width||0)<=0||(a.height||0)<=0))fail();if(a.kind==='font'&&typeof a.family!=='string')fail();}
   const boardIds=new Set<string>();
-  for(const b of p.boards){if(!b||typeof b.id!=='string'||boardIds.has(b.id)||typeof b.name!=='string'||!['Store','Library','Extras'].includes(b.group)||![b.width,b.height].every(n=>Number.isInteger(n)&&n>0&&n<=8192)||b.width*b.height>40_000_000||!Array.isArray(b.layers)||b.layers.length>200||typeof b.enabled!=='boolean'||!(b.background===null||/^#[0-9a-f]{6}$/i.test(b.background)))fail();boardIds.add(b.id);const layerIds=new Set<string>();for(const l of b.layers){if(!l||typeof l.id!=='string'||layerIds.has(l.id)||typeof l.name!=='string'||!['image','text'].includes(l.type)||![l.x,l.y,l.width,l.height,l.angle,l.opacity].every(Number.isFinite)||l.width<=0||l.height<=0||l.width>100_000||l.height>100_000||l.opacity<0||l.opacity>1||typeof l.visible!=='boolean'||typeof l.locked!=='boolean')fail();layerIds.add(l.id);if(![l.tiltX,l.tiltY].every(t=>t===undefined||(Number.isFinite(t)&&Math.abs(t)<=TILT_LIMIT))||!(l.cameraDistance===undefined||(Number.isFinite(l.cameraDistance)&&l.cameraDistance>=CAMERA_DISTANCE_MIN&&l.cameraDistance<=CAMERA_DISTANCE_MAX)))fail();if(l.type==='image'&&!p.assets.some(a=>a.id===l.assetId&&a.kind==='image'))fail();if(l.type==='text'&&(typeof l.text!=='string'||typeof l.fontFamily!=='string'||!Number.isFinite(l.fontSize)||(l.fontSize||0)<=0||!/^#[0-9a-f]{6}$/i.test(l.fill||'')))fail();}}
+  for(const b of p.boards){if(!b||typeof b.id!=='string'||boardIds.has(b.id)||typeof b.name!=='string'||!['Store','Library','Extras'].includes(b.group)||![b.width,b.height].every(n=>Number.isInteger(n)&&n>0&&n<=8192)||b.width*b.height>40_000_000||!Array.isArray(b.layers)||b.layers.length>200||typeof b.enabled!=='boolean'||!(b.background===null||/^#[0-9a-f]{6}$/i.test(b.background)))fail();if(b.outputs!==undefined&&!(Array.isArray(b.outputs)&&b.outputs.every(o=>o&&['png','ico'].includes(o.format)&&Array.isArray(o.widths)&&o.widths.length>0&&o.widths.length<=OUTPUT_WIDTHS_MAX&&o.widths.every(w=>Number.isInteger(w)&&w>0&&w<=(o.format==='ico'?ICO_MAX:8192)))))fail();boardIds.add(b.id);const layerIds=new Set<string>();for(const l of b.layers){if(!l||typeof l.id!=='string'||layerIds.has(l.id)||typeof l.name!=='string'||!['image','text'].includes(l.type)||![l.x,l.y,l.width,l.height,l.angle,l.opacity].every(Number.isFinite)||l.width<=0||l.height<=0||l.width>100_000||l.height>100_000||l.opacity<0||l.opacity>1||typeof l.visible!=='boolean'||typeof l.locked!=='boolean')fail();layerIds.add(l.id);if(![l.tiltX,l.tiltY].every(t=>t===undefined||(Number.isFinite(t)&&Math.abs(t)<=TILT_LIMIT))||!(l.cameraDistance===undefined||(Number.isFinite(l.cameraDistance)&&l.cameraDistance>=CAMERA_DISTANCE_MIN&&l.cameraDistance<=CAMERA_DISTANCE_MAX)))fail();if(l.type==='image'&&!p.assets.some(a=>a.id===l.assetId&&a.kind==='image'))fail();if(l.type==='text'&&(typeof l.text!=='string'||typeof l.fontFamily!=='string'||!Number.isFinite(l.fontSize)||(l.fontSize||0)<=0||!/^#[0-9a-f]{6}$/i.test(l.fill||'')))fail();}}
   return p;
 }

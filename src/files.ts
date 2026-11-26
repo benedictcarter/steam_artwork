@@ -1,12 +1,20 @@
 import { unzip, zip, strFromU8, strToU8 } from 'fflate';
 import { get, set } from 'idb-keyval';
-import { type Asset, type Project, uid, validateProject } from './model';
+import { type Asset, type Project, uid, validateProject, addMissingTargets } from './model';
 
 const MAX_FILE=50*1024*1024;
 export const readData = (file:Blob):Promise<string>=>new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=()=>reject(new Error('Could not read file.'));r.readAsDataURL(file);});
 export const dataBytes=(data:string)=>Uint8Array.from(atob(data.slice(data.indexOf(',')+1)),c=>c.charCodeAt(0));
-const asBuffer=(bytes:Uint8Array)=>bytes.slice().buffer as ArrayBuffer;
+export const asBuffer=(bytes:Uint8Array)=>bytes.slice().buffer as ArrayBuffer;
 export const pack=(files:Record<string,Uint8Array>):Promise<Uint8Array>=>new Promise((resolve,reject)=>zip(files,{level:3},(err,result)=>err?reject(err):resolve(result)));
+export function packIco(images:{size:number;png:Uint8Array}[]):Uint8Array{
+  const HEADER=6,ENTRY=16,ICON_TYPE=1,PLANES=1,BITS=32,BYTE=256;
+  const out=new Uint8Array(HEADER+ENTRY*images.length+images.reduce((n,i)=>n+i.png.length,0)),v=new DataView(out.buffer);
+  v.setUint16(2,ICON_TYPE,true);v.setUint16(4,images.length,true);
+  let offset=HEADER+ENTRY*images.length;
+  images.forEach(({size,png},i)=>{const e=HEADER+ENTRY*i;out[e]=size%BYTE;out[e+1]=size%BYTE;v.setUint16(e+4,PLANES,true);v.setUint16(e+6,BITS,true);v.setUint32(e+8,png.length,true);v.setUint32(e+12,offset,true);out.set(png,offset);offset+=png.length;});
+  return out;
+}
 export const unpack=(bytes:Uint8Array):Promise<Record<string,Uint8Array>>=>new Promise((resolve,reject)=>unzip(bytes,{filter:f=>f.originalSize<250*1024*1024},(err,result)=>err?reject(new Error('Could not read ZIP archive.')):resolve(result)));
 export function download(blob:Blob,name:string){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 export async function makeProjectFile(project:Project):Promise<Blob>{
@@ -23,7 +31,7 @@ export async function openProjectFile(file:File):Promise<Project>{
   if(!Array.isArray(p.assets)||p.assets.length>500)throw new Error('Invalid project assets.');
   let total=0;
   p.assets=await Promise.all(p.assets.map(async(a:Asset&{path:string})=>{const data=archive[a.path];if(!data)throw new Error(`Missing asset: ${a.name}`);total+=data.byteLength;if(total>250*1024*1024)throw new Error('Expanded project exceeds 250 MB.');return {...a,path:undefined,data:await readData(new Blob([asBuffer(data)],{type:a.mime}))};}));
-  const project=validateProject(p);await loadFonts(project.assets);return project;
+  const project=addMissingTargets(validateProject(p));await loadFonts(project.assets);return project;
 }
 const fontLoads=new Map<string,Promise<void>>();
 export async function loadFont(asset:Asset):Promise<void>{if(asset.kind!=='font')return;let promise=fontLoads.get(asset.id);if(!promise){promise=(async()=>{const font=new FontFace(asset.family!,asBuffer(dataBytes(asset.data)));await font.load();document.fonts.add(font);})();fontLoads.set(asset.id,promise);promise.catch(()=>fontLoads.delete(asset.id));}return promise;}
@@ -38,4 +46,4 @@ export async function importAssets(files:File[]):Promise<{assets:Asset[];warning
 const AUTOSAVE_KEY='steam-art-studio.project.v1';
 let pending=Promise.resolve();
 export function autosave(project:Project){const work=pending.catch(()=>{}).then(()=>set(AUTOSAVE_KEY,project));pending=work;return work;}
-export async function restore():Promise<Project|null>{const p=await get(AUTOSAVE_KEY);if(!p)return null;const valid=validateProject(p);await loadFonts(valid.assets);return valid;}
+export async function restore():Promise<Project|null>{const p=await get(AUTOSAVE_KEY);if(!p)return null;const valid=addMissingTargets(validateProject(p));await loadFonts(valid.assets);return valid;}
