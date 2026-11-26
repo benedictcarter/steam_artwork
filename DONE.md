@@ -9,4 +9,5 @@
 - 2026-11-26 · Soften edges in the asset editor: fades a 2-pixel band past the cleared area by colour distance and takes the old background colour out of it, so cut-outs lose their halo · `retouch.ts`, `RetouchDialog.tsx`.
 - 2026-11-26 · A tilted layer's selection box wraps the tilted picture; resizing it resizes the flat layer to match · `perspective.ts` tiltedBox/flatSize, `render.ts`, `model.ts`.
 - 2026-11-26 · Corner handles scale evenly along the diagonal (Shift still stretches freely) · `controls.ts`.
+- 2026-11-26 · App icon target (512 × 512): exports 512 and 184 PNGs and a Windows .ico holding 16–256 px; older saved projects gain it on open · `model.ts` outputs/addMissingTargets, `files.ts` packIco, `render.ts` boardFiles.
 - 2026-11-26 · Fixed: moving or resizing several selected layers crashed the page ("Maximum call stack size exceeded") · `Artboard.tsx`.

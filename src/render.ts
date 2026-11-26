@@ -1,7 +1,7 @@
 import { FabricImage, FabricObject, Textbox, StaticCanvas } from 'fabric';
 import type { Asset, Board, Layer } from './model';
-import { loadFonts, pack } from './files';
-import { safeName } from './model';
+import { loadFonts, packIco } from './files';
+import { boardOutputs, safeName } from './model';
 import { affine, flatSize, isTilted, mesh, projector, rotate, tiltedBox, type Tilt, type Vec } from './perspective';
 
 export const SELECTION_STYLE={cornerColor:'#b9ee83',borderColor:'#b9ee83',cornerStrokeColor:'#18251a',transparentCorners:false,cornerSize:9,padding:2};
@@ -51,9 +51,21 @@ export function objectPatch(object:ArtObject):Partial<Layer>{
   if(object instanceof TiltedLayer&&object.fontSize)p.fontSize=Math.max(1,object.fontSize*size.height/object.flat.height);
   return p;
 }
-export async function renderPNG(board:Board,assets:Asset[]):Promise<Blob>{
+const toPNG=(el:HTMLCanvasElement)=>new Promise<Blob>((resolve,reject)=>el.toBlob(blob=>blob?resolve(blob):reject(new Error('PNG export failed.')),'image/png'));
+async function renderWidths(board:Board,assets:Asset[],widths:number[]):Promise<Blob[]>{
   await loadFonts(assets);await document.fonts.ready;
   const canvas=new StaticCanvas(undefined,{width:board.width,height:board.height,backgroundColor:board.background||'transparent',enableRetinaScaling:false,renderOnAddRemove:false});
-  try{const objects=await Promise.all(board.layers.map(l=>makeObject(l,assets)));canvas.add(...objects);canvas.renderAll();const el=canvas.toCanvasElement(1);return await new Promise<Blob>((resolve,reject)=>el.toBlob(blob=>blob?resolve(blob):reject(new Error('PNG export failed.')),'image/png'));}finally{await canvas.dispose();}
+  try{const objects=await Promise.all(board.layers.map(l=>makeObject(l,assets)));canvas.add(...objects);canvas.renderAll();const out:Blob[]=[];for(const w of widths)out.push(await toPNG(canvas.toCanvasElement(w/board.width)));return out;}finally{await canvas.dispose();}
 }
-export async function exportBoards(boards:Board[],assets:Asset[],progress:(n:number)=>void):Promise<Blob>{const files:Record<string,Uint8Array>={};for(let i=0;i<boards.length;i++){files[`${safeName(boards[i].name).toLowerCase()}.png`]=new Uint8Array(await (await renderPNG(boards[i],assets)).arrayBuffer());progress(i+1);}const bytes=await pack(files);return new Blob([bytes.slice().buffer as ArrayBuffer],{type:'application/zip'});}
+export const renderPNG=async(board:Board,assets:Asset[])=>(await renderWidths(board,assets,[board.width]))[0];
+const bytes=async(b:Blob)=>new Uint8Array(await b.arrayBuffer());
+export async function boardFiles(board:Board,assets:Asset[]):Promise<Record<string,Uint8Array>>{
+  const base=safeName(board.name).toLowerCase(),files:Record<string,Uint8Array>={};
+  for(const o of boardOutputs(board)){
+    const pngs=await Promise.all((await renderWidths(board,assets,o.widths)).map(bytes));
+    if(o.format==='ico')files[`${base}.ico`]=packIco(o.widths.map((size,i)=>({size,png:pngs[i]})));
+    else o.widths.forEach((w,i)=>{files[`${base}${o.widths.length>1?`-${w}`:''}.png`]=pngs[i];});
+  }
+  return files;
+}
+export async function exportFiles(boards:Board[],assets:Asset[],progress:(n:number)=>void):Promise<Record<string,Uint8Array>>{const files:Record<string,Uint8Array>={};for(let i=0;i<boards.length;i++){Object.assign(files,await boardFiles(boards[i],assets));progress(i+1);}return files;}
