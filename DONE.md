@@ -9,3 +9,4 @@
 - 2026-11-26 · Soften edges in the asset editor: fades a 2-pixel band past the cleared area by colour distance and takes the old background colour out of it, so cut-outs lose their halo · `retouch.ts`, `RetouchDialog.tsx`.
 - 2026-11-26 · A tilted layer's selection box wraps the tilted picture; resizing it resizes the flat layer to match · `perspective.ts` tiltedBox/flatSize, `render.ts`, `model.ts`.
 - 2026-11-26 · Corner handles scale evenly along the diagonal (Shift still stretches freely) · `controls.ts`.
+- 2026-11-26 · Fixed: moving or resizing several selected layers crashed the page ("Maximum call stack size exceeded") · `Artboard.tsx`.

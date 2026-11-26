@@ -25,7 +25,7 @@ export function Artboard(props:Props){
     const select=()=>{const o=c.getActiveObject();if(o){o.set(SELECTION_STYLE);diagonalCorners(o);}if(!syncing.current)latest.current.onSelect(latest.current.board.id,layerIds(c));};
     c.on('selection:created',select);c.on('selection:updated',select);c.on('selection:cleared',select);
     c.on('mouse:down',e=>{if(!e.target)latest.current.onSelect(latest.current.board.id,[]);});
-    c.on('object:modified',e=>{const moved=(e.target instanceof ActiveSelection?e.target.getObjects():[e.target]) as ArtObject[];syncing.current=true;if(e.target instanceof ActiveSelection)c.discardActiveObject();syncing.current=false;latest.current.onChange(latest.current.board.id,Object.fromEntries(moved.filter(o=>o.layerId).map(o=>[o.layerId!,objectPatch(o)])));});
+    c.on('object:modified',e=>queueMicrotask(()=>{const moved=(e.target instanceof ActiveSelection?e.target.getObjects():[e.target]) as ArtObject[];syncing.current=true;if(e.target instanceof ActiveSelection)c.discardActiveObject();syncing.current=false;latest.current.onChange(latest.current.board.id,Object.fromEntries(moved.filter(o=>o.layerId).map(o=>[o.layerId!,objectPatch(o)])));}));
     c.on('text:editing:exited',e=>{const obj=e.target as ArtObject;if(obj.layerId)latest.current.onChange(latest.current.board.id,{[obj.layerId]:objectPatch(obj)});});
     return()=>{ro.disconnect();canvas.current=null;void c.dispose();};
   },[]);

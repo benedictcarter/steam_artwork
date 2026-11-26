@@ -27,3 +27,7 @@ Fabric scales a corner drag by (|x|+|y|)/(w+h), so on a wide layer only the side
 ## Stopping the Vite task leaves node serving stale code
 
 Stopping the background shell that ran `npx vite` left its node child alive on the port, and it kept serving an old `render.ts` (its watcher had missed the edits). The live page disagreed with passing tests for a whole debug round. Check `import('/src/x.ts')` in the page shows the new code; to restart, kill the node PID on the port, not just the shell.
+
+## Never change the selection inside Fabric's `object:modified`
+
+Fabric fires `object:modified` from inside `endCurrentTransform`, and only clears the transform after the handler returns. Discarding the active selection there ends the same transform again, which fires `object:modified` again: infinite recursion, "Maximum call stack size exceeded", and the canvas breaks. It hit every group move or resize. The handler now runs its work in a `queueMicrotask`, after the transform is closed.
