@@ -19,3 +19,11 @@ Synthetic key presses from the in-app browser never raise `copy`/`paste`, so a c
 ## Perspective tilt: canvas 2D has no projective transform
 
 `ctx.transform` is affine only, so a trapezoid can't be drawn in one call. The tilt draws a 16×16 mesh of triangles, each clipped and drawn with its own affine map; each clip triangle is pushed out by one device pixel or hairline seams show. Camera distance is relative to the layer's half-diagonal and never closer than 1.05× the nearest corner, so extreme tilts can't divide by zero or flip behind the camera.
+
+## Fabric's proportional corner scale favours the long side
+
+Fabric scales a corner drag by (|x|+|y|)/(w+h), so on a wide layer only the sideways part of the pointer move counts and the corner feels stuck to left/right. `controls.ts` projects the pointer onto the diagonal instead: (|x|·w+|y|·h)/(w²+h²).
+
+## Stopping the Vite task leaves node serving stale code
+
+Stopping the background shell that ran `npx vite` left its node child alive on the port, and it kept serving an old `render.ts` (its watcher had missed the edits). The live page disagreed with passing tests for a whole debug round. Check `import('/src/x.ts')` in the page shows the new code; to restart, kill the node PID on the port, not just the shell.

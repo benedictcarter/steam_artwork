@@ -3,6 +3,7 @@ import { ActiveSelection, Canvas } from 'fabric';
 import { ImagePlus, Maximize2 } from 'lucide-react';
 import { type Board, type Asset, type Layer } from './model';
 import { makeObject, objectPatch, SELECTION_STYLE, type ArtObject } from './render';
+import { diagonalCorners } from './controls';
 
 type Props={board:Board;assets:Asset[];active:boolean;selected:string[];guides:boolean;onSelect:(board:string,layers:string[])=>void;onChange:(board:string,patches:Record<string,Partial<Layer>>)=>void;onDrop:(board:string,asset:string|null,files:File[],at:{x:number;y:number})=>void;onFocus:(board:string)=>void;onError:(message:string)=>void;};
 const layerIds=(c:Canvas)=>c.getActiveObjects().map(o=>(o as ArtObject).layerId).filter((id):id is string=>!!id);
@@ -21,7 +22,7 @@ export function Artboard(props:Props){
     const c=new Canvas(element.current!,{selection:true,selectionColor:'rgba(185,238,131,.12)',selectionBorderColor:'#b9ee83',preserveObjectStacking:true,enableRetinaScaling:true,renderOnAddRemove:false,uniformScaling:true});canvas.current=c;
     const size=()=>{if(!host.current)return;const b=latest.current.board,w=host.current.clientWidth;c.setDimensions({width:w,height:w*b.height/b.width});c.setZoom(w/b.width);c.requestRenderAll();};
     const ro=new ResizeObserver(size);ro.observe(host.current!);size();
-    const select=()=>{c.getActiveObject()?.set(SELECTION_STYLE);if(!syncing.current)latest.current.onSelect(latest.current.board.id,layerIds(c));};
+    const select=()=>{const o=c.getActiveObject();if(o){o.set(SELECTION_STYLE);diagonalCorners(o);}if(!syncing.current)latest.current.onSelect(latest.current.board.id,layerIds(c));};
     c.on('selection:created',select);c.on('selection:updated',select);c.on('selection:cleared',select);
     c.on('mouse:down',e=>{if(!e.target)latest.current.onSelect(latest.current.board.id,[]);});
     c.on('object:modified',e=>{const moved=(e.target instanceof ActiveSelection?e.target.getObjects():[e.target]) as ArtObject[];syncing.current=true;if(e.target instanceof ActiveSelection)c.discardActiveObject();syncing.current=false;latest.current.onChange(latest.current.board.id,Object.fromEntries(moved.filter(o=>o.layerId).map(o=>[o.layerId!,objectPatch(o)])));});

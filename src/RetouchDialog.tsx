@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Crop, RotateCcw, Undo2, X } from 'lucide-react';
 import { type Asset } from './model';
-import { clearRegions, opaqueBounds, type Pixels, type Point, TOLERANCE_MAX } from './retouch';
+import { clearRegions, opaqueBounds, type Pixels, type Point, SOFTNESS_MAX, TOLERANCE_MAX } from './retouch';
 
 const DEFAULT_TOLERANCE=15;
+const DEFAULT_SOFTNESS=30;
 const editedName=(name:string)=>name.replace(/\.[^.]+$/,'')+' (edited).png';
 
 async function readPixels(asset:Asset):Promise<Pixels>{
@@ -16,9 +17,9 @@ async function readPixels(asset:Asset):Promise<Pixels>{
 type Props={asset:Asset;onSave:(asset:Pick<Asset,'name'|'data'|'width'|'height'>)=>void;onClose:()=>void;onError:(message:string)=>void};
 export function RetouchDialog({asset,onSave,onClose,onError}:Props){
   const view=useRef<HTMLCanvasElement>(null);
-  const [source,setSource]=useState<Pixels|null>(null),[seeds,setSeeds]=useState<Point[]>([]),[tolerance,setTolerance]=useState(DEFAULT_TOLERANCE),[trim,setTrim]=useState(false);
+  const [source,setSource]=useState<Pixels|null>(null),[seeds,setSeeds]=useState<Point[]>([]),[tolerance,setTolerance]=useState(DEFAULT_TOLERANCE),[trim,setTrim]=useState(false),[softness,setSoftness]=useState(DEFAULT_SOFTNESS);
   useEffect(()=>{let canceled=false;readPixels(asset).then(p=>{if(!canceled)setSource(p);}).catch(()=>{if(!canceled){onError(`Could not read ${asset.name}.`);onClose();}});return()=>{canceled=true;};},[asset,onClose,onError]);
-  const pixels=useMemo(()=>source&&clearRegions(source,seeds,tolerance),[source,seeds,tolerance]);
+  const pixels=useMemo(()=>source&&clearRegions(source,seeds,tolerance,softness),[source,seeds,tolerance,softness]);
   const frame=useMemo(()=>source&&pixels&&((trim&&opaqueBounds(pixels,source.width,source.height))||{x:0,y:0,width:source.width,height:source.height}),[source,pixels,trim]);
   const trimmed=!!source&&!!frame&&(frame.width<source.width||frame.height<source.height);
   useEffect(()=>{const c=view.current;if(!c||!source||!pixels||!frame)return;c.width=frame.width;c.height=frame.height;c.getContext('2d')!.putImageData(new ImageData(pixels,source.width,source.height),-frame.x,-frame.y);},[source,pixels,frame]);
@@ -30,6 +31,7 @@ export function RetouchDialog({asset,onSave,onClose,onError}:Props){
     <div className="retouch-stage checker">{source?<canvas ref={view} onClick={pick} aria-label="Image to edit"/>:<p>Loading…</p>}</div>
     <div className="retouch-controls">
       <label className="retouch-tolerance" title="How different a colour can be from the one you clicked and still be removed. Raise it if bits of background remain; lower it if the subject is being eaten."><span>Tolerance</span><input type="range" min={0} max={TOLERANCE_MAX} value={tolerance} onChange={e=>setTolerance(Number(e.target.value))}/><span>{tolerance}</span></label>
+      <label className="retouch-tolerance" title="Fades the pixels just outside what you cleared and takes the old background colour out of them, so edges blend instead of showing a halo. Raise it if a light or dark fringe remains; lower it if the subject's edge looks see-through."><span>Soften edges</span><input type="range" min={0} max={SOFTNESS_MAX} value={softness} onChange={e=>setSoftness(Number(e.target.value))}/><span>{softness}</span></label>
       <label className="check-field" title="Cut the image down to the smallest rectangle that still holds every visible pixel."><input type="checkbox" checked={trim} onChange={e=>setTrim(e.target.checked)}/><Crop size={13}/>Auto-crop</label>
       {source&&frame&&<span className="retouch-size">{frame.width} × {frame.height}{trimmed?` (from ${source.width} × ${source.height})`:''}</span>}
     </div>

@@ -1,4 +1,4 @@
-import { CAMERA_DISTANCE_MAX, CAMERA_DISTANCE_MIN, TILT_LIMIT } from './perspective';
+import { CAMERA_DISTANCE_MAX, CAMERA_DISTANCE_MIN, rotate, TILT_LIMIT, tiltedBox } from './perspective';
 export type Asset = { id: string; name: string; kind: 'image' | 'font'; mime: string; data: string; width?: number; height?: number; family?: string };
 export type Layer = { id: string; name: string; type: 'image' | 'text'; assetId?: string; x: number; y: number; width: number; height: number; angle: number; opacity: number; visible: boolean; locked: boolean; flipX: boolean; flipY: boolean; cropX?: number; cropY?: number; cropWidth?: number; cropHeight?: number; text?: string; fontFamily?: string; fontSize?: number; fill?: string; align?: 'left' | 'center' | 'right'; stroke?: string; strokeWidth?: number; tiltX?: number; tiltY?: number; cameraDistance?: number };
 export type Board = { id: string; name: string; group: 'Store' | 'Library' | 'Extras'; width: number; height: number; background: string | null; layers: Layer[]; enabled: boolean; note?: string };
@@ -41,7 +41,7 @@ export function moveLayer(project:Project,boardId:string,id:string,direction:num
 export function duplicateLayer(layer:Layer):Layer{return {...layer,id:uid(),name:layer.name+' copy',x:layer.x+20,y:layer.y+20};}
 export type Rect={x:number;y:number;width:number;height:number};
 export function layerBounds(layers:Layer[]):Rect{
-  const points=layers.flatMap(l=>{const c=Math.cos(l.angle*Math.PI/180),s=Math.sin(l.angle*Math.PI/180);return [[0,0],[l.width,0],[l.width,l.height],[0,l.height]].map(([u,v])=>({x:l.x+u*c-v*s,y:l.y+u*s+v*c}));});
+  const points=layers.flatMap(l=>{const b=tiltedBox(l.width,l.height,l);return [[b.x,b.y],[b.x+b.width,b.y],[b.x+b.width,b.y+b.height],[b.x,b.y+b.height]].map(([u,v])=>{const r=rotate({x:u,y:v},l.angle);return {x:l.x+r.x,y:l.y+r.y};});});
   const xs=points.map(p=>p.x),ys=points.map(p=>p.y),x=Math.min(...xs),y=Math.min(...ys);
   return {x,y,width:Math.max(...xs)-x,height:Math.max(...ys)-y};
 }
