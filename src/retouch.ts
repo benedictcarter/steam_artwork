@@ -1,3 +1,4 @@
+import type { Rect } from './model';
 export type Pixels={data:Uint8ClampedArray;width:number;height:number};
 export type Point={x:number;y:number};
 
@@ -21,7 +22,6 @@ export function clearRegions(source:Pixels,seeds:Point[],tolerance:number):Uint8
   return out;
 }
 
-export type Rect={x:number;y:number;width:number;height:number};
 export function opaqueBounds(data:Uint8ClampedArray,width:number,height:number):Rect|null{
   let left=width,top=height,right=-1,bottom=-1;
   for(let y=0;y<height;y++)for(let x=0;x<width;x++)if(data[(y*width+x)*4+3]){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);}
